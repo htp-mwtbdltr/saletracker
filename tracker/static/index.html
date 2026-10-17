@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Price Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏷️</text></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">🏷️ Price Tracker</a>
+    <nav>
+      <a href="#/" data-nav="home">Trackers</a>
+      <a href="#/activity" data-nav="activity">Activity</a>
+      <a href="#/settings" data-nav="settings">Settings</a>
+    </nav>
+    <span id="botStatus" class="pill">…</span>
+  </header>
+  <main id="view"></main>
+
+  <dialog id="modal"><div id="modalBody"></div></dialog>
+  <div id="toast" class="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

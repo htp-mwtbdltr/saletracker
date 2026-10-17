@@ -1,0 +1,15 @@
+services:
+  price-tracker:
+    build: .
+    container_name: price_tracker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=America/New_York
+    ports:
+      - "8295:8000"
+    volumes:
+      - ./data:/data
+    extra_hosts:
+      # lets the container reach FlareSolverr published on the host
+      - "host.docker.internal:host-gateway"
