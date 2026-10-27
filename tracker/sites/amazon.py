@@ -204,7 +204,7 @@ def _scrape_product(tracker: dict) -> ScrapeResult:
                        check=lambda t: "productTitle" in t or "dp-container" in t)
     soup = BeautifulSoup(page.text, "lxml")
     title_el = soup.select_one("#productTitle")
-    name = re.sub(r"\s+", " ", title_el.get_text(" ", strip=True)) if title_el else asin
+    name = re.sub(r"\s+", " ", title_el.get_text(" ", strip=True)) if title_el else ""
     img = soup.select_one("#landingImage, #imgBlkFront, #main-image")
     image = (img.get("data-old-hires") or img.get("src") or "") if img else ""
     avail = soup.select_one("#availability")
@@ -221,13 +221,19 @@ def _scrape_product(tracker: dict) -> ScrapeResult:
     offers.sort(key=lambda o: o["price"] + o["shipping"])
     prices = _series_from_offers(offers, bool(opts.get("include_shipping")))
 
-    unavailable = "currently unavailable" in availability.lower()
+    avail_l = availability.lower()
+    unavailable = any(p in avail_l for p in ("currently unavailable", "out of stock", "no longer available"))
+    if not offers and not unavailable:
+        # Amazon sometimes serves a stripped page (no title, buy box or offers) to
+        # suspected bots. Treat it as a failed check instead of "out of stock".
+        raise ScrapeError("Amazon returned an incomplete product page (no offers and no "
+                          "out-of-stock message)" + ("" if name else "; no title either"))
     item = ScrapedItem(
         key=asin, name=name, url=product_url(asin), image=image, prices=prices,
         extra={"asin": asin, "availability": availability, "in_stock": bool(offers) and not unavailable,
                "offer_count": len(offers), "offers": offers[:40], "offer_source": source},
     )
-    return ScrapeResult(items=[item], title=name, final_url=page.url)
+    return ScrapeResult(items=[item], title=name or asin, final_url=page.url)
 
 
 def _scrape_search(tracker: dict) -> ScrapeResult:

@@ -14,6 +14,8 @@ log = logging.getLogger("monitor")
 _site_locks: dict[str, asyncio.Lock] = {}
 _running: dict[int, asyncio.Task] = {}
 MAX_NEW_ITEM_NOTICES = 20
+# An item must be out of stock on this many checks in a row before "back in stock" can fire.
+OOS_CONFIRM_CHECKS = 2
 
 SEARCH_DEFAULTS = {"notify_new": True, "notify_returning": True, "return_after_hours": 12,
                    "notify_price_drop": False, "notify_first_run": False}
@@ -133,6 +135,12 @@ def ingest(t: dict, result) -> list[Notice]:
             continue
         seen.add(it.key)
         ex = existing.get(it.key)
+        it.name = it.name or (ex["name"] if ex else it.key)
+        # Count consecutive out-of-stock checks so one bad page can't trigger "back in stock".
+        prev_oos = 0
+        if ex is not None:
+            prev_oos = ex["extra"].get("oos_checks", 1 if ex["extra"].get("in_stock") is False else 0)
+        it.extra["oos_checks"] = prev_oos + 1 if it.extra.get("in_stock") is False else 0
         if ex is None:
             item_id = db.insert("items", {
                 "tracker_id": t["id"], "key": it.key, "name": it.name, "url": it.url, "image": it.image,
@@ -142,7 +150,7 @@ def ingest(t: dict, result) -> list[Notice]:
             item_id = ex["id"]
             prev, ignored = ex["prices"], bool(ex["ignored"])
             lows_before = db.lows(item_id)
-            db.update("items", item_id, {"name": it.name or ex["name"], "url": it.url or ex["url"],
+            db.update("items", item_id, {"name": it.name, "url": it.url or ex["url"],
                                          "image": it.image or ex["image"], "last_seen": now, "present": 1,
                                          "prices": it.prices, "extra": it.extra})
         for series, price in it.prices.items():
@@ -166,7 +174,7 @@ def ingest(t: dict, result) -> list[Notice]:
                     notices.append(_item_notice("price_drop", f"📉 {it.name}", t, item_id, it,
                                                 f"Price dropped {money(prev_low)} → **{money(cur_low)}**"))
         elif ex is not None and opts["notify_stock"]:
-            if ex["extra"].get("in_stock") is False and it.extra.get("in_stock") is True:
+            if prev_oos >= OOS_CONFIRM_CHECKS and it.extra.get("in_stock") is True:
                 notices.append(_item_notice("back_in_stock", f"✅ Back in stock: {it.name}", t, item_id, it))
 
         notices += _eval_alerts(t, alerts, item_id, it, prev, lows_before, now)

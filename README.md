@@ -32,8 +32,8 @@ This folder holds everything needed to rebuild the container. Some values were *
 ## Quick start (recreating from scratch)
 
 ```bash
-git clone http://git.proxub/billy/my_containers.git
-cd my_containers/pricetracker
+git clone http://git.proxub/billy/pricetracker.git
+cd pricetracker
 
 cp .env.example .env
 nano .env                       # set DISCORD_TOKEN (and optionally WEB_PASSWORD, WEB_URL)
